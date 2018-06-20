@@ -1,0 +1,25 @@
+{
+    "apitoken": "enter-your-token-here",
+    "budgets": [
+        {
+            "name": "My Budget",
+            "accounts": [
+                {
+                    "name": "Loan A",
+                    "rate": 4.25,
+                    "schedule": 15
+                },
+                {
+                    "name": "Loan B",
+                    "rate": 5.16,
+                    "schedule": 0
+                },
+                {
+                    "name": "Loan C",
+                    "rate": 5.49,
+                    "schedule": 1
+                }
+            ]
+        }
+    ]
+}
