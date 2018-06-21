@@ -72,8 +72,6 @@ def get_budget_map():
 
 def submit_transactions(budgetid, transactions):
     data = {"transactions": transactions}
-    for transaction in transactions:
-        print transaction
     response = request(POST, "/budgets/{}/transactions/bulk".format(budgetid), params=data)
 
 
