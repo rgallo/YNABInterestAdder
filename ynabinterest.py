@@ -47,13 +47,19 @@ def get_transaction(account_data, amount):
     }
 
 
+def is_last_day_of_month():
+    now = datetime.datetime.now()
+    year, month = now.year, now.month
+    return calendar.monthrange(year, month)[1] == now.day
+
+
 def process_budget(budget):
     transactions = []
     budgetid = BUDGETS[budget.get("name")]
     account_map = {account['name']: account for account in request(GET, '/budgets/{}/accounts'.format(budgetid))['data']['accounts']}
     for account in budget['accounts']:
         name, rate, schedule = account['name'], account['rate'], account['schedule']
-        if not schedule or schedule == datetime.datetime.now().day:
+        if not schedule or schedule == datetime.datetime.now().day or (schedule == -1 and is_last_day_of_month()):
             account_data = account_map[name]
             amount = calculate_amount(account_data, rate, schedule)
             transactions.append(get_transaction(account_data, amount))
