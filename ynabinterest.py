@@ -23,21 +23,21 @@ def days_in_year():
     return 366.0 if calendar.isleap(datetime.datetime.now().year) else 365.0
 
 
-def calculate_amount(account_data, rate, schedule):
+def calculate_amount(account_data, rate, schedule, outflow=True):
     balance = account_data['balance']/1000.0
     period_interest = (rate/100.0)/(12 if schedule else days_in_year())
-    return balance * period_interest
+    return balance * period_interest * (1.0 if outflow else -1.0)
 
 
-def get_transaction(account_data, amount):
+def get_transaction(account_data, amount, payee_name="Interest"):
     date = datetime.datetime.now().strftime("%Y-%m-%d")
-    milliamount = int(amount * 1000)
+    milliamount = int(amount * 1000.0)
     return {
         "account_id": account_data['id'],
         "date": date,
         "amount": milliamount,
         "payee_id": None,
-        "payee_name": "Interest",
+        "payee_name": payee_name,
         "category_id": None,
         "memo": "Entered automatically by YNABInterestAdder",
         "cleared": "uncleared",
@@ -58,11 +58,11 @@ def process_budget(budget):
     budgetid = BUDGETS[budget.get("name")]
     account_map = {account['name']: account for account in request(GET, '/budgets/{}/accounts'.format(budgetid))['data']['accounts']}
     for account in budget['accounts']:
-        name, rate, schedule = account['name'], account['rate'], account['schedule']
+        name, rate, schedule, outflow = account['name'], account['rate'], account['schedule'], account.get("outflow", True)
         if not schedule or schedule == datetime.datetime.now().day or (schedule == -1 and is_last_day_of_month()):
             account_data = account_map[name]
-            amount = calculate_amount(account_data, rate, schedule)
-            transactions.append(get_transaction(account_data, amount))
+            amount = calculate_amount(account_data, rate, schedule, outflow=outflow)
+            transactions.append(get_transaction(account_data, amount, payee_name="Interest{}".format(" Earned" if not outflow else "")))
     submit_transactions(budgetid, transactions)
 
 
