@@ -29,12 +29,11 @@ def calculate_amount(account_data, rate, schedule, outflow=True):
     return balance * period_interest * (1.0 if outflow else -1.0)
 
 
-def get_transaction(account_data, amount, payee_name="Interest"):
-    date = datetime.datetime.now().strftime("%Y-%m-%d")
+def get_transaction(account_data, amount, transaction_date, payee_name="Interest"):
     milliamount = int(amount * 1000.0)
     return {
         "account_id": account_data['id'],
-        "date": date,
+        "date": transaction_date,
         "amount": milliamount,
         "payee_id": None,
         "payee_name": payee_name,
@@ -43,7 +42,7 @@ def get_transaction(account_data, amount, payee_name="Interest"):
         "cleared": "uncleared",
         "approved": True,
         "flag_color": None,
-        "import_id": "YNAB:{}:{}:1".format(milliamount, date)
+        "import_id": "YNAB:{}:{}:1".format(milliamount, transaction_date)
     }
 
 
@@ -53,7 +52,7 @@ def is_last_day_of_month():
     return calendar.monthrange(year, month)[1] == now.day
 
 
-def process_budget(budget):
+def process_budget(budget, transaction_date):
     transactions = []
     budgetid = BUDGETS[budget.get("name")]
     account_map = {account['name']: account for account in request(GET, '/budgets/{}/accounts'.format(budgetid))['data']['accounts']}
@@ -62,7 +61,7 @@ def process_budget(budget):
         if not schedule or schedule == datetime.datetime.now().day or (schedule == -1 and is_last_day_of_month()):
             account_data = account_map[name]
             amount = calculate_amount(account_data, rate, schedule, outflow=outflow)
-            transactions.append(get_transaction(account_data, amount, payee_name="Interest{}".format(" Earned" if not outflow else "")))
+            transactions.append(get_transaction(account_data, amount, transaction_date, payee_name="Interest{}".format(" Earned" if not outflow else "")))
     submit_transactions(budgetid, transactions)
 
 
@@ -80,14 +79,17 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="config.json",
                         help="path to config.json file")
+    parser.add_argument("--date", default=datetime.datetime.now().strftime("%Y-%m-%d"),
+                        help="date to enter transactions for (YYYY-MM-DD)")
     args = parser.parse_args()
     config = None
     with open(args.config, "r") as cfgfile:
         config = json.load(cfgfile)
+    transaction_date = args.date
     TOKEN = config.get("apitoken")
     BUDGETS = get_budget_map()
     for budget in config.get("budgets"):
-        process_budget(budget)
+        process_budget(budget, transaction_date)
 
 
 if __name__ == "__main__":
