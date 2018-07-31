@@ -9,6 +9,7 @@ POST = "POST"
 BASEURL = "https://api.youneedabudget.com/v1"
 BUDGETS = {}
 TOKEN = ""
+DEFAULT_PAYEE = "Interest"
 
 
 def request(method, endpoint, params=None):
@@ -23,13 +24,13 @@ def days_in_year():
     return 366.0 if calendar.isleap(datetime.datetime.now().year) else 365.0
 
 
-def calculate_amount(account_data, rate, schedule, outflow=True):
+def calculate_amount(account_data, rate, schedule):
     balance = account_data['balance']/1000.0
     period_interest = (rate/100.0)/(12 if schedule else days_in_year())
-    return balance * period_interest * (1.0 if outflow else -1.0)
+    return balance * period_interest
 
 
-def get_transaction(account_data, amount, transaction_date, payee_name="Interest"):
+def get_transaction(account_data, amount, transaction_date, payee_name):
     milliamount = int(amount * 1000.0)
     return {
         "account_id": account_data['id'],
@@ -57,11 +58,11 @@ def process_budget(budget, transaction_date):
     budgetid = BUDGETS[budget.get("name")]
     account_map = {account['name']: account for account in request(GET, '/budgets/{}/accounts'.format(budgetid))['data']['accounts']}
     for account in budget['accounts']:
-        name, rate, schedule, outflow = account['name'], account['rate'], account['schedule'], account.get("outflow", True)
+        name, rate, schedule, payee = account['name'], account['rate'], account['schedule'], account.get("payee", DEFAULT_PAYEE)
         if not schedule or schedule == datetime.datetime.now().day or (schedule == -1 and is_last_day_of_month()):
             account_data = account_map[name]
-            amount = calculate_amount(account_data, rate, schedule, outflow=outflow)
-            transactions.append(get_transaction(account_data, amount, transaction_date, payee_name="Interest{}".format(" Earned" if not outflow else "")))
+            amount = calculate_amount(account_data, rate, schedule)
+            transactions.append(get_transaction(account_data, amount, transaction_date, payee_name=payee))
     submit_transactions(budgetid, transactions)
 
 
